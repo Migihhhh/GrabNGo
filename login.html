@@ -55,25 +55,23 @@
         <div class="container">
             <div class="row d-flex justify-content-center align-items-center">
                 <div class="col-md-6 d-none d-md-block">
-                    <img src="assets/logo.png"
+                    <img src="assets/square logo.png"
                         class="img-fluid" alt="Sample image">
                 </div>
                 <div class="col-md-6 bg-custom">
-                    <form>
+                    <form method="POST" action="login.php">
                         <h3 class="text-center mb-4">Sign in to GrabNGo</h3>
 
                         <!-- ID Number input -->
                         <div class="form-outline mb-4">
-                            <input type="number" id="studentID" class="form-control form-control-lg"
-                                placeholder="Enter a Student ID Number" />
-                            <label class="form-label" for="studentIDLogin">Student ID Number</label>
+                            <input type="number" id="student_id" name="student_id" class="form-control form-control-lg" placeholder="Enter a Student ID Number" />
+                            <label class="form-label" for="student_id">Student ID Number</label>
                         </div>
 
                         <!-- Password input -->
                         <div class="form-outline mb-3">
-                            <input type="password" id="password" class="form-control form-control-lg"
-                                placeholder="Enter password" />
-                            <label class="form-label" for="passwordLogin">Password</label>
+                            <input type="password" id="password" name="password" class="form-control form-control-lg" placeholder="Enter password" />
+                            <label class="form-label" for="password">Password</label>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -87,10 +85,7 @@
                         </div>
 
                         <div class="text-center">
-                            <a href="meals.html"><button type="button" class="btn btn-primary btn-lg px-5"
-                                    style="background-color: #f6eddd; color: #000;">
-                                    Login
-                                </button></a>
+                            <button type="submit" class="btn btn-primary btn-lg px-5">Login</button>
                         </div>
                     </form>
                 </div>
@@ -98,7 +93,7 @@
         </div>
     </main>
 
-    <footer class="text-start text-black px-4 py-3"">
+    <footer class="text-start text-black px-4 py-3">
         <div class="fw-bold">Bebet's Paresan Group</div>
         <ul class="mb-0 ps-0 list-unstyled">
             <li>Consul, Miggy</li>
