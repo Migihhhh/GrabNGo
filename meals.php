@@ -133,16 +133,23 @@ sqlsrv_close($conn);
 
     .cart-item img {
       width: 60px;
-      /* fixed width */
       height: 60px;
-      /* fixed height */
       object-fit: cover;
-      /* keeps aspect ratio, crops if needed */
       border-radius: 8px;
       margin-right: 15px;
       border: 1px solid #ccc;
       flex-shrink: 0;
-      /* prevents shrinking */
+    }
+
+    .remove-btn {
+      font-size: 1.2rem;
+      padding: 0 8px;
+      line-height: 1;
+    }
+
+    .offcanvas-body ul.list-group {
+      max-height: 200px;
+      overflow-y: auto;
     }
   </style>
 </head>
@@ -177,7 +184,9 @@ sqlsrv_close($conn);
         </div>
 
         <div class="d-flex align-items-center px-3">
-          <button class="btn btn-outline-secondary d-flex align-items-center px-3 py-2">
+          <button class="btn btn-outline-secondary d-flex align-items-center px-3 py-2" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#userOffcanvas" aria-controls="userOffcanvas">
+            <i class="bi bi-person-circle me-2"></i>
             <span class="fw-bold">Hi, <?php echo htmlspecialchars($name); ?>!</span>
           </button>
         </div>
@@ -186,13 +195,13 @@ sqlsrv_close($conn);
   </nav>
 
   <div class="d-flex justify-content-between align-items-center ulam-header px-3">
-    <!-- Left -->
+    <!-- yung top text na may ULAM   -->
     <div class="d-flex align-items-baseline">
       <span class="ulam-title px-3">ULAM</span>
       <span class="ulam-menu-text">Today's Menu</span>
     </div>
 
-    <!-- Right -->
+    <!-- allowance -->
     <div class="d-flex align-items-center allowance-info">
       <i class="bi bi-wallet2 me-2 px-2"></i>
       Allowance: <?php echo number_format($allowance, 2); ?>
@@ -214,38 +223,79 @@ sqlsrv_close($conn);
     </div>
     <div class="offcanvas-body">
     </div>
+  </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- User Profile Offcanvas -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="userOffcanvas" aria-labelledby="userOffcanvasLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="userOffcanvasLabel">User Profile</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <p class="mb-2">Name: <strong><?php echo htmlspecialchars($name); ?></strong></p>
+      <p class="mb-4">Allowance: <strong>₱<?php echo number_format($allowance, 2); ?></strong></p>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        function addToCart(food) {
-          const cart = document.querySelector(".offcanvas-body");
+      <hr>
+      <h6 class="text-muted mb-3">Notifications</h6>
+      <ul class="list-group mb-4">
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          Order received!
+          <span class="badge bg-success rounded-pill">New</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          Allowance updated
+          <span class="badge bg-info rounded-pill">Today</span>
+        </li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          Menu refreshed
+          <span class="badge bg-secondary rounded-pill">1d ago</span>
+        </li>
+      </ul>
 
-          const item = document.createElement("div");
-          item.className = "cart-item d-flex align-items-center mb-3";
-          item.innerHTML = `
+      <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
+  </div>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      function addToCart(food) {
+        const cart = document.querySelector(".offcanvas-body");
+
+        const item = document.createElement("div");
+        item.className = "cart-item d-flex align-items-center mb-3";
+
+        item.innerHTML = `
             <img src="${food.image_url}" alt="${food.name}" />
-            <div class="cart-item-details">
+            <div class="cart-item-details flex-grow-1">
               <h6 class="mb-0">${food.name}</h6>
               <small>${food.calories} Kcal</small>
             </div>
-            <span class="ms-auto fw-bold">₱${food.price}</span>
+            <span class="fw-bold me-2">₱${food.price}</span>
+            <button class="btn btn-sm btn-danger remove-btn">&times;</button>
           `;
-          cart.appendChild(item);
-        }
+
+        // Add event listener to the remove button
+        item.querySelector(".remove-btn").addEventListener("click", () => {
+          cart.removeChild(item);
+        });
+
+        cart.appendChild(item);
+      }
 
 
-        fetch("get_foods.php")
-          .then((res) => res.json())
-          .then((foods) => {
-            const row = document.querySelector(".row.g-4");
-            row.innerHTML = ""; // Clear any existing cards
+      fetch("get_foods.php")
+        .then((res) => res.json())
+        .then((foods) => {
+          const row = document.querySelector(".row.g-4");
+          row.innerHTML = ""; // Clear any existing cards
 
-            foods.forEach(food => {
-              const col = document.createElement("div");
-              col.className = "col-6 col-md-4 col-lg-3";
-              col.innerHTML = `
+          foods.forEach(food => {
+            const col = document.createElement("div");
+            col.className = "col-6 col-md-4 col-lg-3";
+            col.innerHTML = `
               <div class="card ulam-card text-start shadow-sm">
                 <img src="${food.image_url}" class="card-img-top" alt="${food.name}">
                 <div class="card-body">
@@ -257,16 +307,16 @@ sqlsrv_close($conn);
                 </div>
               </div>
             `;
-              const button = col.querySelector("button");
-              button.addEventListener("click", () => {
-                addToCart(food);
-              });
-              row.appendChild(col);
+            const button = col.querySelector("button");
+            button.addEventListener("click", () => {
+              addToCart(food);
             });
-          })
-          .catch(err => console.error("Error fetching foods:", err));
-      });
-    </script>
+            row.appendChild(col);
+          });
+        })
+        .catch(err => console.error("Error fetching foods:", err));
+    });
+  </script>
 </body>
 
 </html>
