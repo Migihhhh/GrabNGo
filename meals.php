@@ -267,19 +267,8 @@ sqlsrv_close($conn);
 
       <hr>
       <h6 class="text-muted mb-3">Notifications</h6>
-      <ul class="list-group mb-4">
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          Order received!
-          <span class="badge bg-success rounded-pill">New</span>
-        </li>
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          Allowance updated
-          <span class="badge bg-info rounded-pill">Today</span>
-        </li>
-        <li class="list-group-item d-flex justify-content-between align-items-center">
-          Menu refreshed
-          <span class="badge bg-secondary rounded-pill">1d ago</span>
-        </li>
+      <ul id="notifications-list" class="list-group mb-4">
+        <!-- Notifications will load here via JavaScript -->
       </ul>
 
       <a href="logout.php" class="btn btn-danger">Logout</a>
@@ -333,6 +322,39 @@ sqlsrv_close($conn);
 
         cartTotal.textContent = `₱${total.toFixed(2)}`;
       }
+
+      function loadNotifications() {
+        fetch('get_notifications.php')
+          .then(response => response.json())
+          .then(notifications => {
+            const container = document.getElementById('notifications-list');
+            container.innerHTML = '';
+
+            notifications.forEach(notif => {
+              const date = new Date(notif.created_at);
+              const formattedDate = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              });
+
+              const li = document.createElement('li');
+              li.className = 'list-group-item d-flex justify-content-between align-items-center';
+              li.innerHTML = `
+                    Your Order #${notif.order_id} is currently ${notif.status}
+                    <span class="badge bg-secondary rounded-pill">${formattedDate}</span>
+                `;
+              container.appendChild(li);
+            });
+
+            if (notifications.length === 0) {
+              container.innerHTML = '<li class="list-group-item">No notifications</li>';
+            }
+          });
+      }
+
+      // Call when page loads and when opening profile
+      document.addEventListener('DOMContentLoaded', loadNotifications);
+      document.getElementById('userOffcanvas').addEventListener('show.bs.offcanvas', loadNotifications);
 
       function addToCart(food) {
         cart.push(food);

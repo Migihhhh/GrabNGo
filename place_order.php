@@ -96,6 +96,19 @@ try {
     // Update session allowance
     $_SESSION['allowance'] -= $totalAmount;
 
+    // Insert notification (add this section)
+    $status = 'Pending'; // Default status
+    $sqlNotification = "INSERT INTO notifications (user_id, order_id, status) 
+                    VALUES (?, ?, ?)";
+    $paramsNotification = [$studentId, $orderId, $status];
+    $stmtNotification = sqlsrv_query($conn, $sqlNotification, $paramsNotification);
+
+    if ($stmtNotification === false) {
+        // Log error but don't break transaction
+        error_log("Notification insertion failed: " . print_r(sqlsrv_errors(), true));
+    }
+
+
     // Commit transaction
     sqlsrv_commit($conn);
 
