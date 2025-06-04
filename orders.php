@@ -325,6 +325,47 @@
             $orders[] = $row;
         }
     }
+
+    // Calculate statistics
+    $totalOrders = 0;
+    $completedOrders = 0;
+    $pendingOrders = 0;
+    $todaysRevenue = 0.00;
+
+    // Total Orders
+    $sqlTotal = "SELECT COUNT(*) AS total FROM orders";
+    $stmtTotal = sqlsrv_query($conn, $sqlTotal);
+    if ($stmtTotal !== false) {
+        $row = sqlsrv_fetch_array($stmtTotal, SQLSRV_FETCH_ASSOC);
+        $totalOrders = $row['total'];
+    }
+
+    // Completed Orders
+    $sqlCompleted = "SELECT COUNT(*) AS completed FROM orders WHERE status = 'Completed'";
+    $stmtCompleted = sqlsrv_query($conn, $sqlCompleted);
+    if ($stmtCompleted !== false) {
+        $row = sqlsrv_fetch_array($stmtCompleted, SQLSRV_FETCH_ASSOC);
+        $completedOrders = $row['completed'];
+    }
+
+    // Pending Orders
+    $sqlPending = "SELECT COUNT(*) AS pending FROM orders WHERE status = 'Pending'";
+    $stmtPending = sqlsrv_query($conn, $sqlPending);
+    if ($stmtPending !== false) {
+        $row = sqlsrv_fetch_array($stmtPending, SQLSRV_FETCH_ASSOC);
+        $pendingOrders = $row['pending'];
+    }
+
+    // Today's Revenue (only completed orders from today)
+    $sqlRevenue = "SELECT SUM(total_amount) AS revenue 
+               FROM orders 
+               WHERE status = 'Completed' 
+               AND CAST(order_time AS DATE) = CAST(GETDATE() AS DATE)";
+    $stmtRevenue = sqlsrv_query($conn, $sqlRevenue);
+    if ($stmtRevenue !== false) {
+        $row = sqlsrv_fetch_array($stmtRevenue, SQLSRV_FETCH_ASSOC);
+        $todaysRevenue = $row['revenue'] ? $row['revenue'] : 0.00;
+    }
     ?>
 
 
@@ -355,25 +396,25 @@
             <div class="col-md-3">
                 <div class="stat-card">
                     <h5>TOTAL ORDERS</h5>
-                    <p id="total-orders">0</p>
+                    <p id="total-orders"><?= $totalOrders ?></p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card">
                     <h5>COMPLETED</h5>
-                    <p id="completed-orders">0</p>
+                    <p id="completed-orders"><?= $completedOrders ?></p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card">
                     <h5>PENDING</h5>
-                    <p id="pending-orders">0</p>
+                    <p id="pending-orders"><?= $pendingOrders ?></p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="stat-card">
                     <h5>TODAY'S REVENUE</h5>
-                    <p id="todays-revenue">₱0.00</p>
+                    <p id="todays-revenue">₱<?= number_format($todaysRevenue, 2) ?></p>
                 </div>
             </div>
         </div>
@@ -606,6 +647,10 @@
                     // Close modal
                     bootstrap.Modal.getInstance(document.getElementById('editOrderModal')).hide();
                 });
+            });
+
+            document.getElementById('refreshBtn').addEventListener('click', function () {
+                location.reload();
             });
         </script>
 </body>
