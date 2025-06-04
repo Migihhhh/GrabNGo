@@ -26,7 +26,7 @@ if ($conn === false) {
 }
 
 // Fetch food items from database
-$sql = "SELECT id, name, calories, price FROM foods";
+$sql = "SELECT id, name, calories, price, image_url FROM foods";
 $stmt = sqlsrv_query($conn, $sql);
 
 if ($stmt === false) {
@@ -211,7 +211,29 @@ sqlsrv_close($conn);
   <div class="container mt-4">
     <div class="row g-4">
       <!-- Cards will go here -->
+      <?php foreach ($foods as $food): ?>
+        <div class="col-md-4">
+          <div class="card ulam-card shadow-sm">
+            <img src="<?php echo htmlspecialchars($food['image_url']); ?>"
+              alt="<?php echo htmlspecialchars($food['name']); ?>" class="card-img-top" />
+            <div class="card-body">
+              <h5 class="card-title"><?php echo htmlspecialchars($food['name']); ?></h5>
+              <p class="card-text"><?php echo $food['calories']; ?> Kcal</p>
+              <p class="card-text fw-bold">₱<?php echo number_format($food['price'], 2); ?></p>
+              <button class="btn btn-custom w-100 add-to-cart" data-id="<?php echo $food['id']; ?>"
+                data-name="<?php echo htmlspecialchars($food['name']); ?>"
+                data-calories="<?php echo $food['calories']; ?>" data-price="<?php echo $food['price']; ?>"
+                data-image="<?php echo htmlspecialchars($food['image_url']); ?>">
+                Add to Cart
+              </button>
+            </div>
+          </div>
+        </div>
+      <?php endforeach; ?>
     </div>
+  </div>
+
+  </div>
   </div>
 
   <!-- Cart -->
@@ -222,6 +244,14 @@ sqlsrv_close($conn);
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body">
+      <div class="cart-items"></div>
+      <p id="empty-cart-msg">Your cart is empty.</p>
+      <hr />
+      <div class="d-flex justify-content-between">
+        <strong>Total:</strong>
+        <span id="cart-total">₱0.00</span>
+      </div>
+      <button id="checkout-btn" class="btn btn-success w-100 mt-3">Checkout</button>
     </div>
   </div>
 
@@ -261,61 +291,193 @@ sqlsrv_close($conn);
 
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      function addToCart(food) {
-        const cart = document.querySelector(".offcanvas-body");
+      const cartContainer = document.querySelector(".cart-items");
+      const cartTotal = document.getElementById("cart-total");
+      const emptyCartMsg = document.getElementById("empty-cart-msg");
+      const checkoutBtn = document.getElementById("checkout-btn");
 
-        const item = document.createElement("div");
-        item.className = "cart-item d-flex align-items-center mb-3";
+      let cart = [];
+      let total = 0;
 
-        item.innerHTML = `
-            <img src="${food.image_url}" alt="${food.name}" />
-            <div class="cart-item-details flex-grow-1">
-              <h6 class="mb-0">${food.name}</h6>
-              <small>${food.calories} Kcal</small>
-            </div>
-            <span class="fw-bold me-2">₱${food.price}</span>
-            <button class="btn btn-sm btn-danger remove-btn">&times;</button>
-          `;
+      function updateCartDisplay() {
+        cartContainer.innerHTML = "";
+        total = 0;
 
-        // Add event listener to the remove button
-        item.querySelector(".remove-btn").addEventListener("click", () => {
-          cart.removeChild(item);
+        if (cart.length === 0) {
+          emptyCartMsg.style.display = "block";
+          cartTotal.textContent = "₱0.00";
+          return;
+        }
+
+        emptyCartMsg.style.display = "none";
+
+        cart.forEach((food, index) => {
+          total += parseFloat(food.price); // Ensure recalculation
+
+          const item = document.createElement("div");
+          item.className = "cart-item d-flex align-items-center mb-3";
+
+          item.innerHTML = `
+      <img src="${food.image_url}" alt="${food.name}" 
+        style="width: 50px; height: 50px; object-fit: cover; margin-right: 10px;" />
+      <div class="cart-item-details flex-grow-1">
+        <h6 class="mb-0">${food.name}</h6>
+        <small>${food.calories} Kcal</small>
+      </div>
+      <span class="fw-bold me-2">₱${parseFloat(food.price).toFixed(2)}</span>
+      <button class="btn btn-sm btn-danger remove-btn" data-index="${index}">&times;</button>
+    `;
+
+          cartContainer.appendChild(item);
         });
 
-        cart.appendChild(item);
+        cartTotal.textContent = `₱${total.toFixed(2)}`;
       }
 
+      function addToCart(food) {
+        cart.push(food);
+        total += food.price;
+        updateCartDisplay();
+      }
 
+      // Remove item handler
+      cartContainer.addEventListener("click", function (e) {
+        if (e.target.classList.contains("remove-btn")) {
+          const index = parseInt(e.target.getAttribute("data-index"));
+          total -= cart[index].price;
+          cart.splice(index, 1);
+          updateCartDisplay();
+        }
+      });
+
+      // Checkout
+      checkoutBtn.addEventListener("click", async function () {
+        if (cart.length === 0) {
+          alert("Your cart is empty.");
+          return;
+        }
+
+        // Check if user has enough allowance
+        const currentAllowance = <?php echo $allowance; ?>;
+        if (total > currentAllowance) {
+          alert("Insufficient allowance for this order.");
+          return;
+        }
+
+        try {
+          const response = await fetch("place_order.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              student_id: <?php echo $_SESSION['student_id']; ?>,
+              total_amount: total,
+              items: cart,
+            }),
+          });
+
+          // Always attempt to parse as JSON first, as your PHP always returns JSON.
+          const data = await response.json(); // Read the body ONCE as JSON.
+
+          if (response.ok) { // Check if the HTTP response status was successful
+            if (data.success) {
+              alert(`Order #${data.order_id} placed successfully!`);
+              cart = [];
+              total = 0;
+              updateCartDisplay();
+
+              // Update allowance display
+              document.querySelector('.allowance-info').innerHTML = `
+                  <i class="bi bi-wallet2 me-2 px-2"></i>
+                  Allowance: ₱${data.new_allowance.toFixed(2)}
+              `;
+            } else {
+              // If response.ok is true but data.success is false, it's an application-level error
+              throw new Error(data.message || 'Order failed');
+            }
+          } else {
+            // If response.ok is false, it's a server error, and 'data' should contain the error message from PHP
+            throw new Error(data.message || `Server error: ${response.status} - ${response.statusText}`);
+          }
+        } catch (err) {
+          console.error('Checkout error:', err);
+          alert(`Error placing order: ${err.message}`);
+        }
+      });
+
+      // Load food items
       fetch("get_foods.php")
         .then((res) => res.json())
         .then((foods) => {
           const row = document.querySelector(".row.g-4");
-          row.innerHTML = ""; // Clear any existing cards
+          row.innerHTML = "";
 
-          foods.forEach(food => {
+          foods.forEach((food) => {
             const col = document.createElement("div");
             col.className = "col-6 col-md-4 col-lg-3";
             col.innerHTML = `
-              <div class="card ulam-card text-start shadow-sm">
-                <img src="${food.image_url}" class="card-img-top" alt="${food.name}">
-                <div class="card-body">
-                  <h5 class="card-title">${food.name}</h5>
-                  <p>Kcal: ${food.calories}</p>
-                  <button class="btn btn-custom" data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop">
-                    ₱${food.price}
-                  </button>
-                </div>
+            <div class="card ulam-card text-start shadow-sm">
+              <img src="${food.image_url}" class="card-img-top" alt="${food.name}">
+              <div class="card-body">
+                <h5 class="card-title">${food.name}</h5>
+                <p>Kcal: ${food.calories}</p>
+                <button class="btn btn-custom" data-bs-toggle="offcanvas" data-bs-target="#staticBackdrop">
+                  ₱${food.price}
+                </button>
               </div>
-            `;
+            </div>
+          `;
+
             const button = col.querySelector("button");
             button.addEventListener("click", () => {
               addToCart(food);
             });
+
             row.appendChild(col);
           });
         })
-        .catch(err => console.error("Error fetching foods:", err));
+        .catch((err) => console.error("Error fetching foods:", err));
     });
+  </script>
+
+  <!-- Code injected by live-server -->
+  <script>
+    // <![CDATA[  <-- For SVG support
+    if ('WebSocket' in window) {
+      (function () {
+        function refreshCSS() {
+          var sheets = [].slice.call(document.getElementsByTagName("link"));
+          var head = document.getElementsByTagName("head")[0];
+          for (var i = 0; i < sheets.length; ++i) {
+            var elem = sheets[i];
+            var parent = elem.parentElement || head;
+            parent.removeChild(elem);
+            var rel = elem.rel;
+            if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+              var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+              elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+            }
+            parent.appendChild(elem);
+          }
+        }
+        var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+        var address = protocol + window.location.host + window.location.pathname + '/ws';
+        var socket = new WebSocket(address);
+        socket.onmessage = function (msg) {
+          if (msg.data == 'reload') window.location.reload();
+          else if (msg.data == 'refreshcss') refreshCSS();
+        };
+        if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+          console.log('Live reload enabled.');
+          sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+        }
+      })();
+    }
+    else {
+      console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+    }
+    // ]]>
   </script>
 </body>
 
